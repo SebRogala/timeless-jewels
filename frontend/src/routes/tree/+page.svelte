@@ -454,7 +454,9 @@
     const response = await fetch('https://api.poe.watch/leagues');
     const responseJson = await response.json();
     leagues = responseJson.map((l: { name: string }) => ({ value: l.name, label: l.name }));
-    league = leagues.find((l) => l.value === localStorage.getItem('league')) || leagues[0];
+    league = leagues.find((l) => l.value === localStorage.getItem('league'))
+      || leagues.find((l) => !l.value.match(/^(Standard|Hardcore|Solo Self-Found|Ruthless|HC Ruthless|Hardcore )/i) && !l.value.startsWith('Ruthless'))
+      || leagues[0];
   };
 
   $: league && localStorage.setItem('league', league.value);
