@@ -389,68 +389,31 @@ export const constructQuery = (jewel: number, conqueror: string, result: SearchW
   const max_filters = 4;
   const max_query_length = max_filter_length * max_filters;
   const final_query = [];
-  const stat = {
-    type: 'count',
-    value: { min: 1 },
-    filters: [],
-    disabled: false
-  };
+  const statId = tradeStatNames[jewel][conqueror];
 
-  // single seed case
-  if (result.length == 1) {
-    for (const conq of Object.keys(tradeStatNames[jewel])) {
-      stat.filters.push({
-        id: tradeStatNames[jewel][conq],
-        value: {
-          min: result[0].seed,
-          max: result[0].seed
-        },
-        disabled: conq != conqueror
-      });
-    }
-
-    final_query.push(stat);
-    // too many results case
-  } else if (result.length > max_query_length) {
-    for (let i = 0; i < max_filters; i++) {
+  if (result.length <= max_filter_length) {
+    final_query.push({
+      type: 'count',
+      value: { min: 1 },
+      disabled: false,
+      filters: result.map((r) => ({
+        id: statId,
+        value: { min: r.seed, max: r.seed }
+      }))
+    });
+  } else {
+    const capped = result.slice(0, max_query_length);
+    for (let i = 0; i < Math.ceil(capped.length / max_filter_length); i++) {
+      const chunk = capped.slice(i * max_filter_length, (i + 1) * max_filter_length);
       final_query.push({
         type: 'count',
         value: { min: 1 },
-        filters: [],
-        disabled: i != 0
+        disabled: i !== 0,
+        filters: chunk.map((r) => ({
+          id: statId,
+          value: { min: r.seed, max: r.seed }
+        }))
       });
-    }
-
-    for (const [i, r] of result.slice(0, max_query_length).entries()) {
-      const index = Math.floor(i / max_filter_length);
-
-      final_query[index].filters.push({
-        id: tradeStatNames[jewel][conqueror],
-        value: {
-          min: r.seed,
-          max: r.seed
-        }
-      });
-    }
-  } else {
-    for (const conq of Object.keys(tradeStatNames[jewel])) {
-      stat.disabled = conq != conqueror;
-
-      for (const r of result) {
-        stat.filters.push({
-          id: tradeStatNames[jewel][conq],
-          value: {
-            min: r.seed,
-            max: r.seed
-          }
-        });
-      }
-
-      if (stat.filters.length > max_filter_length) {
-        stat.filters = stat.filters.slice(0, max_filter_length);
-      }
-
-      final_query.push(stat);
     }
   }
 
