@@ -1,0 +1,60 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+      - feat/update-tree-3.28
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: 'frontend/.nvmrc'
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Build wasm
+        run: go build -ldflags="-s -w" -v -o frontend/static/calculator.wasm ./wasm
+        env:
+          GOOS: js
+          GOARCH: wasm
+
+      - name: Build frontend
+        working-directory: frontend
+        run: |
+          pnpm install
+          pnpm run build
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './frontend/build'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
